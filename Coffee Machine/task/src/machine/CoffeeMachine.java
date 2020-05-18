@@ -3,15 +3,20 @@ package machine;
 import java.util.Scanner;
 
 public class CoffeeMachine {
-    private int water = 400;
-    private int milk = 540;
-    private int beans = 120;
-    private int cups = 9;
-    private int money = 550;
+    private int water;
+    private int milk;
+    private int beans;
+    private int cups;
+    private int money;
 
     private State state;
 
-    public CoffeeMachine() {
+    public CoffeeMachine(int water, int milk, int beans, int cups, int money) {
+        this.water = water;
+        this.milk = milk;
+        this.beans = beans;
+        this.cups = cups;
+        this.money = money;
         this.state = State.CHOOSING_ACTION;
         promptAction();
     }
@@ -20,12 +25,9 @@ public class CoffeeMachine {
         switch (state) {
             case CHOOSING_ACTION:
                 processAction(action);
-                if (state == State.EXITING) {
-                    return false;
-                }
                 break;
             case CHOOSING_COFEE:
-                chooseAndSellCoffee(action);
+                sellCoffee(action);
                 state = State.CHOOSING_ACTION;
                 promptAction();
                 break;
@@ -55,6 +57,10 @@ public class CoffeeMachine {
                 promptAction();
         }
         return true;
+    }
+
+    public boolean isProcessing() {
+        return state != State.EXITING;
     }
 
     private void promptAction() {
@@ -122,37 +128,31 @@ public class CoffeeMachine {
         }
     }
 
-    private void chooseAndSellCoffee(String action) {
-        switch (action) {
-            case "1":
-                sellCofee(Cofee.ESPRESSO);
-                break;
-            case "2":
-                sellCofee(Cofee.LATTE);
-                break;
-            case "3":
-                sellCofee(Cofee.CAPPUCHINO);
-                break;
-            case "back":
-                state = State.CHOOSING_COFEE;
-                break;
-            default:
-                System.out.println("Invalid input");
-        }
-        System.out.println();
-    }
-
-    private void sellCofee(Cofee cofee) {
-        if (!checkSupplies(cofee)) {
+    private void sellCoffee(String action) {
+        if (action.equals("back")) {
+            System.out.println();
             return;
         }
 
-        System.out.println("I have enough resources, making you a coffee!");
-        water -= cofee.waterPerCup;
-        milk -= cofee.milkPerCup;
-        beans -= cofee.beansPerCup;
-        cups--;
-        money += cofee.moneyPerCup;
+        Cofee cofee;
+        try {
+            cofee = Cofee.of(action);
+            if (!checkSupplies(cofee)) {
+                return;
+            }
+
+            System.out.println("I have enough resources, making you a coffee!");
+            water -= cofee.waterPerCup;
+            milk -= cofee.milkPerCup;
+            beans -= cofee.beansPerCup;
+            cups--;
+            money += cofee.moneyPerCup;
+
+        } catch (Exception e) {
+            System.out.println("Invalid input");
+        }
+
+        System.out.println();
     }
 
     private boolean checkSupplies(Cofee cofee) {
@@ -172,8 +172,9 @@ public class CoffeeMachine {
 
         if (!supplies.isEmpty()) {
             System.out.println(
-                    String.format(
-                            "Sorry, not enough %s!", supplies.substring(0, supplies.length() - 2)));
+                    String.format("Sorry, not enough %s!",
+                            supplies.substring(0, supplies.length() - 2)));
+            System.out.println();
             return false;
         }
 
@@ -197,26 +198,39 @@ public class CoffeeMachine {
     }
 
     private enum Cofee {
-        ESPRESSO(250, 0, 16, 4),
-        LATTE(350, 75, 20, 7),
-        CAPPUCHINO(200, 100, 12, 6);
+        ESPRESSO("1", 250, 0, 16, 4),
+        LATTE("2", 350, 75, 20, 7),
+        CAPPUCHINO("3", 200, 100, 12, 6);
 
+        final String id;
         final int waterPerCup;
         final int milkPerCup;
         final int beansPerCup;
         final int moneyPerCup;
 
-        Cofee(int waterPerCup, int milkPerCup, int beansPerCup, int moneyPerCup) {
+        Cofee(String id, int waterPerCup, int milkPerCup, int beansPerCup, int moneyPerCup) {
+            this.id = id;
             this.waterPerCup = waterPerCup;
             this.milkPerCup = milkPerCup;
             this.beansPerCup = beansPerCup;
             this.moneyPerCup = moneyPerCup;
         }
+
+        public static Cofee of(String id) {
+            for (Cofee cofee : values()) {
+                if (cofee.id.equals(id)) {
+                    return cofee;
+                }
+            }
+            throw new IllegalArgumentException();
+        }
     }
 
     public static void main(String[] args) {
         final Scanner scanner = new Scanner(System.in);
-        CoffeeMachine coffeeMachine = new CoffeeMachine();
-        while (coffeeMachine.next(scanner.nextLine())) {}
+        CoffeeMachine coffeeMachine = new CoffeeMachine(400, 540, 120, 9, 550);
+        while (coffeeMachine.isProcessing()) {
+            coffeeMachine.next(scanner.nextLine());
+        }
     }
 }
